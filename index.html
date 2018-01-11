@@ -1,0 +1,108 @@
+<html>
+<head>
+	<title>vue双向数据绑定</title>
+</head>
+<body>
+	<input v-model="message" placeholder="edit me">
+	<p>Message is: {{ message }}</p>
+	
+<script type="text/javascript">
+	let zhili = {
+		firstName: 'zhili',
+		lastName: 'zhang',
+		get fullName1() {
+			return this.firstName + ' ' + this.lastName; // 自定义取值
+		},
+		set fullName1(value) { // 自定义赋值
+			//value为更新属性时传过来的新值
+			const [firstName, lastName] = value.split(' ');
+			this.firstName = firstName;
+			this.lastName = lastName;
+		}
+	}	
+	Object.defineProperty(zhili, 'fullName', {
+		get() {
+			return this.firstName + ' ' + this.lastName;
+		}
+	})
+
+
+	class Watcher {
+		constructor(obj) { 
+			this._data = obj;
+			this._callbacksByProp = {};
+			const keys = Object.keys(obj);
+			for (let i = 0; i < keys.length; i++) {
+				Object.defineProperty(this, keys[i], {
+					get() {
+						return this._data[keys[i]];
+					},
+					set(value) {
+						this._data[keys[i]] = value;
+						this.emit(keys[i]);
+					}
+				})
+			}
+		}
+
+		on(prop, cb) {
+			const callbacks = this._callbacksByProp[prop] || [];
+			callbacks.push(cb);
+			this._callbacksByProp[prop] = callbacks;
+		}
+
+		emit(prop) {
+			const callbacks = this._callbacksByProp[prop] || [];
+			callbacks.forEach((cb) => {
+				cb(this._data[prop], this);
+			});
+		}
+	}
+
+	const datas = {
+		message: 'zhili',
+		aaa:'123'
+	};
+	const watcher = new Watcher(datas);
+
+	walkTree(document.body, (node) => {
+		let attr = node.getAttribute('v-model');
+		if (attr) {
+			let elemChange = false;
+			node.value = watcher[attr];
+			node.addEventListener('input', (e) => {
+				elemChange = true;
+				watcher[attr] = e.target.value;
+			});
+			watcher.on(attr, (value) => {
+				if (!elemChange) {
+					node.value = value;
+				} else {
+					elemChange = false;
+				}
+			});
+		}
+		const assignMatched = node.innerText.match(/\{\{\s*[^{}]+\s*\}\}/g);
+		if (assignMatched) {
+			for (let i = 0; i < assignMatched.length; i++) {
+				const prop = assignMatched[i].match(/\{\{\s*([^{}]+?)\s*\}\}/)[1];
+				node.template = node.innerText;
+				node.innerText = node.template.replace(assignMatched[i], watcher[prop]);
+				watcher.on(prop, (value) => {
+					node.innerText = node.template.replace(assignMatched[i], value);
+				});
+			}
+		}
+	});
+
+	function walkTree(node, cb) {
+		for (let i = 0; i < node.children.length; i++) {
+			const child = node.children[i];
+			cb(child);
+			walkTree(child); //
+		}
+	}
+
+</script>
+</body>
+</html>
